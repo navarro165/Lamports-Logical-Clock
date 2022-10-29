@@ -1,0 +1,33 @@
+syntax = "proto3";
+
+package banking;
+
+
+// The branch service definition.
+service Branch {
+  //
+  rpc MsgDelivery (BranchRequest) returns (BranchReply) {}
+}
+
+//TODO remove unused when done
+// The request message containing the user's name.
+message BranchRequest {
+  string name = 1;
+  string type = 2;
+  float balance = 3;
+  string interface = 4;
+  float money = 5;
+  int32 originator_id = 6;
+  int32 receiver_id = 7;
+}
+
+// The response message containing the greetings
+message BranchReply {
+  string message = 1;
+  string type = 2;
+  float balance = 3;
+  string interface = 4;
+  float money = 5;
+  int32 originator_id = 6;
+  int32 receiver_id = 7;
+}
