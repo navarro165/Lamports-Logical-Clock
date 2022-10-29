@@ -27,21 +27,20 @@ class Branch(banking_pb2_grpc.BranchServicer):
         # TODO: ask about this todo
         # TODO: students are expected to store the processID of the branches
 
-    # TODO: students are expected to process requests from both Client and Branch
-    def MsgDelivery(self, request, context):
+    def MsgDelivery(self, request:Any, context: Any) -> Any:
         """Processes the requests received from other processes and returns results to requested process."""
-        print("zzzzz")
+
         if request.type == "branch":
             logging.info(f"\t> branch {self.id} received {request.interface} propagation from "
                          f"branch {request.originator_id} for the amount of: ${request.money}")
-            print("aaaa")
+
             if request.interface in {"deposit", "withdraw"}:
                 if request.interface == "deposit":
-                    print("bbbb")
                     self.balance += request.money
+
                 elif request.interface == "withdraw":
                     self.balance -= request.money
-                print("cccc")
+
                 logging.info(f"\t> branch {self.id} balance is now ${self.balance}")
                 return banking_pb2.BranchReply(balance=self.balance, originator_id=self.id)
 
@@ -50,7 +49,6 @@ class Branch(banking_pb2_grpc.BranchServicer):
         """Helper that creates a gRPC channel to a specific branch"""
 
         with grpc.insecure_channel(f'localhost:5005{receiver}') as channel:
-            print(f">>>> : {f'localhost:5005{receiver}'}")
             stub = banking_pb2_grpc.BranchStub(channel)
             request = banking_pb2.BranchRequest(
                 interface=interface,
@@ -74,7 +72,7 @@ class Branch(banking_pb2_grpc.BranchServicer):
                 interface=propagate_type,
                 money=amount,
             )
-            time.sleep(0.5)
+            time.sleep(0.1)
 
     def deposit(self, amount: Union[int, float]) -> None:
         """Initiate branch deposit"""
@@ -85,3 +83,15 @@ class Branch(banking_pb2_grpc.BranchServicer):
         """Initiate branch withdraw"""
         self.balance -= amount
         self._propagate_to_branches(amount=amount, propagate_type="withdraw")
+
+
+class BranchDebugger:
+    """Helper class that debugs branch processes"""
+
+    def __init__(self, branches: list):
+        self.branches = branches
+
+    def log_balances(self) -> None:
+        logging.info("\nCurrent branch balances:")
+        for b in self.branches:
+            logging.info(f"\t- id: {b.id}, balance: {b.balance}")

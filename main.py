@@ -4,7 +4,7 @@ import logging
 import banking_pb2
 import banking_pb2_grpc
 
-from branch import Branch
+from branch import Branch, BranchDebugger
 from concurrent import futures
 from contextlib import contextmanager
 from test_input_output import input_test
@@ -71,20 +71,13 @@ class Main:
                 last_server = server
                 port += 1
 
-            print(branch_objs[0].balance)
-            print(branch_objs[1].balance)
-            print(branch_objs[2].balance)
+            branch_debugger = BranchDebugger(branch_objs)
+            branch_debugger.log_balances()
 
             branch_objs[0].deposit(100)
-            # branch_objs[1].deposit(10)
-            # branch_objs[2].deposit(10)
-            # # branch_objs[0].deposit(10)
-            # #
-            # # time.sleep(1)
-            # #
-            print(branch_objs[0].balance)
-            print(branch_objs[1].balance)
-            print(branch_objs[2].balance)
+            branch_objs[0].deposit(100)
+            branch_objs[0].withdraw(300)
+            branch_debugger.log_balances()
 
             yield
             last_server.wait_for_termination()
