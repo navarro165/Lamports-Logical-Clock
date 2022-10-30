@@ -27,7 +27,7 @@ class BranchServicer(object):
     """
 
     def MsgDelivery(self, request, context):
-        """
+        """delivers instructions to the branch
         """
         context.set_code(grpc.StatusCode.UNIMPLEMENTED)
         context.set_details('Method not implemented!')

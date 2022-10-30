@@ -5,29 +5,24 @@ package banking;
 
 // The branch service definition.
 service Branch {
-  //
+  // delivers instructions to the branch
   rpc MsgDelivery (BranchRequest) returns (BranchReply) {}
 }
 
-//TODO remove unused when done
-// The request message containing the user's name.
+// Branch request message
 message BranchRequest {
-  string name = 1;
-  string type = 2;
-  float balance = 3;
-  string interface = 4;
-  float money = 5;
-  int32 originator_id = 6;
-  int32 receiver_id = 7;
+  string type = 1;
+  float balance = 2;
+  string interface = 3;
+  float money = 4;
+  int32 id = 5;
 }
 
-// The response message containing the greetings
+// Branch response message
 message BranchReply {
-  string message = 1;
-  string type = 2;
-  float balance = 3;
-  string interface = 4;
-  float money = 5;
-  int32 originator_id = 6;
-  int32 receiver_id = 7;
+  string type = 1;
+  float balance = 2;
+  string interface = 3;
+  float money = 4;
+  int32 id = 5;
 }
