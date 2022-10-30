@@ -2,6 +2,7 @@ import time
 import grpc
 import logging
 import banking_pb2_grpc
+from pprint import pprint
 from concurrent import futures
 
 from customer import Customer
@@ -45,7 +46,7 @@ class Main:
     def run(self) -> None:
         logging.info('\nStarting branch processes...')
 
-        # will keep track of the last server to be instantiated in order to hold processes running
+        # will keep track of running branch server threads (will get closed once input data has been processed)
         branch_server_procs = []
         branch_objs = []
         branch_debugger = BranchDebugger(branch_objs)
@@ -87,8 +88,16 @@ class Main:
         except Exception as e:
             logging.error(f"\n\n!!! Failed with error: {e}\n\n")
 
-        else:  # if no errors are raised
+        else:
+            # if no errors are raised
+            # log final balances and output detailed customer events
             branch_debugger.log_balances('final balance')
+
+            logging.info("\n\n########################")
+            logging.info("\tOUTPUT:")
+            logging.info("########################\n")
+            pprint(branch_debugger.list_branch_transactions())
+            logging.info("\n")
 
         finally:
             # stop/release branch servers

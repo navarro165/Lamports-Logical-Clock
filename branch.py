@@ -25,6 +25,9 @@ class Branch(banking_pb2_grpc.BranchServicer):
         # the list of Client stubs to communicate with the branches
         self.stubList = list()
 
+        # keep track of successful customer event
+        self.processed_customer_events = []
+
     def MsgDelivery(self, request: Any, context: Any) -> Any:
         """Processes the requests received from other processes and returns results to requested process."""
 
@@ -43,14 +46,21 @@ class Branch(banking_pb2_grpc.BranchServicer):
             return banking_pb2.BranchReply(balance=self.balance, id=self.id)
 
         if request.type == "customer":
-            if request.interface == "deposit":
-                self.deposit(request.money)
+            try:
+                if request.interface == "deposit":
+                    self.deposit(request.money)
 
-            elif request.interface == "withdraw":
-                self.withdraw(request.money)
+                elif request.interface == "withdraw":
+                    self.withdraw(request.money)
 
-            elif request.interface == "query":
-                logging.info(f"\t> branch {self.id} balance is ${self.balance}")
+                elif request.interface == "query":
+                    logging.info(f"\t> branch {self.id} balance is ${self.balance}")
+
+            except Exception as e:
+                logging.error(f"Customer transaction failed with error: {e}")
+
+            else:
+                self.processed_customer_events.append(request.interface)
 
         return banking_pb2.BranchReply(balance=self.balance, id=self.id)
 
@@ -98,6 +108,20 @@ class Branch(banking_pb2_grpc.BranchServicer):
         self.balance -= amount
         self._propagate_to_branches(amount=amount, propagate_type="withdraw")
 
+    def get_processed_customer_events(self) -> dict:
+        """Retrieve customer related events processed in this branch"""
+
+        processed_events = {"id": self.id, "recv": []}
+
+        for event in self.processed_customer_events:
+            details = {"interface": event, "result": "success"}
+
+            if event == "query":
+                details["money"] = self.balance
+
+            processed_events["recv"].append(details)
+        return processed_events
+
 
 class BranchDebugger:
     """Helper class for debugging branch processes"""
@@ -111,3 +135,6 @@ class BranchDebugger:
             logging.info(f"\t- id: {b.id}, balance: {b.balance}")
 
         logging.info("\n")
+
+    def list_branch_transactions(self) -> list:
+        return [b.get_processed_customer_events() for b in self.branches]
