@@ -1,13 +1,9 @@
-import time
 import logging
 from typing import Union, Literal, Any
 
 import grpc
 import banking_pb2
 import banking_pb2_grpc
-
-
-logging.basicConfig(level=logging.INFO, format='%(message)s')
 
 
 class Branch(banking_pb2_grpc.BranchServicer):
@@ -31,9 +27,9 @@ class Branch(banking_pb2_grpc.BranchServicer):
     def MsgDelivery(self, request: Any, context: Any) -> Any:
         """Processes the requests received from other processes and returns results to requested process."""
 
-        logging.info(f"\t> branch {self.id} received {request.interface} from "
-                     f"{request.type} {request.id}"
-                     f"{' for the amount of: $ ' + str(request.money) if request.interface != 'query' else ''}")
+        logging.debug(f"\t> branch {self.id} received {request.interface} from "
+                      f"{request.type} {request.id}"
+                      f"{' for the amount of: $ ' + str(request.money) if request.interface != 'query' else ''}")
 
         if request.type == "branch":
             if request.interface == "deposit":
@@ -42,7 +38,7 @@ class Branch(banking_pb2_grpc.BranchServicer):
             elif request.interface == "withdraw":
                 self.balance -= request.money
 
-            logging.info(f"\t> branch {self.id} balance is ${self.balance}")
+            logging.debug(f"\t> branch {self.id} balance is ${self.balance}")
             return banking_pb2.BranchReply(balance=self.balance, id=self.id)
 
         if request.type == "customer":
@@ -54,7 +50,7 @@ class Branch(banking_pb2_grpc.BranchServicer):
                     self.withdraw(request.money)
 
                 elif request.interface == "query":
-                    logging.info(f"\t> branch {self.id} balance is ${self.balance}")
+                    logging.debug(f"\t> branch {self.id} balance is ${self.balance}")
 
             except Exception as e:
                 logging.error(f"Customer transaction failed with error: {e}")
@@ -77,26 +73,25 @@ class Branch(banking_pb2_grpc.BranchServicer):
                 id=_id
             )
             response = stub.MsgDelivery(request)
-            logging.info(f"\t< branch {_id} confirms that branch {receiver} "
-                         f"has new balance of {response.balance}")
+            logging.debug(f"\t< branch {_id} confirms that branch {receiver} "
+                          f"has new balance of {response.balance}")
 
     def _propagate_to_branches(self, amount: Union[int, float], propagate_type: Literal["deposit", "withdraw"]) -> None:
         """Helper that propagates deposits or withdrawals to other branches"""
-        logging.info(f"\n\t******************************************************************")
-        logging.info(f"\t*** Propagating branch {self.id} {propagate_type} "
-                     f"of ${amount} to branches {self.branches} ***")
+        logging.debug(f"\n\t******************************************************************")
+        logging.debug(f"\t*** Propagating branch {self.id} {propagate_type} "
+                      f"of ${amount} to branches {self.branches} ***")
 
         for target_branch in self.branches:
-            logging.info('')
+            logging.debug('')
             self._link_to_branch(
                 _id=self.id,
                 receiver=target_branch,
                 interface=propagate_type,
                 money=amount,
             )
-            time.sleep(0.1)
 
-        logging.info(f"\t******************************************************************")
+        logging.debug(f"\t******************************************************************")
 
     def deposit(self, amount: Union[int, float]) -> None:
         """Initiate branch deposit"""
@@ -134,7 +129,7 @@ class BranchDebugger:
         for b in self.branches:
             logging.info(f"\t- id: {b.id}, balance: {b.balance}")
 
-        logging.info("\n")
+        logging.debug("\n")
 
     def list_branch_transactions(self) -> list:
         return [b.get_processed_customer_events() for b in self.branches]

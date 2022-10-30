@@ -1,4 +1,3 @@
-import time
 import logging
 import grpc
 import banking_pb2
@@ -27,12 +26,12 @@ class Customer:
 
     def execute_events(self) -> None:
         """Processes the events from the list of events and submits the request to the Branch process"""
-        logging.info(f"\n\nExecuting customer {self.id} events...")
+        logging.debug(f"\n\nExecuting customer {self.id} events...")
 
         for event in self.events:
-            logging.info(f"\n\n\t###################")
-            logging.info(f"\t##### {event['interface'].upper()} #####")
-            logging.info(f"\t###################")
+            logging.debug(f"\n\n\t###################")
+            logging.debug(f"\t##### {event['interface'].upper()} #####")
+            logging.debug(f"\t###################")
 
             request = banking_pb2.BranchRequest(
                 interface=event['interface'],
@@ -41,8 +40,7 @@ class Customer:
                 id=self.id
             )
             response = self.stub.MsgDelivery(request)
-            time.sleep(0.1)
 
-            logging.info(f"\t^ customer {self.id} confirms that branch {self.id} "
-                         f"has{' ' if event['interface'] == 'query' else ' new '}"
-                         f"balance of {response.balance}".upper())
+            logging.debug(f"\t^ customer {self.id} confirms that branch {self.id} "
+                          f"has{' ' if event['interface'] == 'query' else ' new '}"
+                          f"balance of {response.balance}".upper())
