@@ -1,12 +1,11 @@
 import time
 import grpc
 import logging
-import banking_pb2
 import banking_pb2_grpc
-
-from branch import Branch, BranchDebugger
 from concurrent import futures
-from contextlib import contextmanager
+
+from customer import Customer
+from branch import Branch, BranchDebugger
 from test_input_output import input_test
 
 
@@ -19,16 +18,18 @@ class Main:
         logging.info('Collecting input data...')
 
         self.input_data = input_data
-        self.branch_processes = []
-        self.client_processes = []
 
+        # collect branch and customer data from input
+        self.branch_processes = []
+        self.customer_processes = []
         self.parse_processes()
-        self.list_processes()
+
+        self.list_processes()  # for debugging purposes
 
     def parse_processes(self) -> None:
         for process in self.input_data:
             if process['type'] == 'customer':
-                self.client_processes.append(process)
+                self.customer_processes.append(process)
             if process['type'] == 'branch':
                 self.branch_processes.append(process)
 
@@ -38,24 +39,26 @@ class Main:
             logging.info(f'\t{p}')
 
         logging.info('\nCustomer Processes:')
-        for p in self.client_processes:
+        for p in self.customer_processes:
             logging.info(f'\t{p}')
 
-    @contextmanager
-    def initialize_branch_processes(self) -> None:
-        port = 50051  # starting port
-        branch_process_ids = set(p['id'] for p in self.branch_processes)
+    def run(self) -> None:
+        logging.info('\nStarting branch processes...')
 
         # will keep track of the last server to be instantiated in order to hold processes running
-        last_server = None
         branch_server_procs = []
         branch_objs = []
+        branch_debugger = BranchDebugger(branch_objs)
 
         try:
+            # collect branch ids from input
+            branch_process_ids = set(p['id'] for p in self.branch_processes)
+
+            # start up branch servers
             for p in self.branch_processes:
-                port_str = str(port)
+                port = f"5005{p['id']}"
                 branch = Branch(
-                    id=p['id'],
+                    _id=p['id'],
                     balance=p['balance'],
                     branches=list(branch_process_ids.difference({p['id']}))
                 )
@@ -63,37 +66,34 @@ class Main:
 
                 server = grpc.server(futures.ThreadPoolExecutor(max_workers=1))
                 banking_pb2_grpc.add_BranchServicer_to_server(branch, server)
-                server.add_insecure_port(f'[::]:{port_str}')
+                server.add_insecure_port(f"[::]:{port}")
                 server.start()
-                logging.info(f"\t- Server started, listening on {port_str}")
-
                 branch_server_procs.append(server)
-                last_server = server
-                port += 1
+                logging.info(f"\t- Server started, listening on {port}")
 
-            branch_debugger = BranchDebugger(branch_objs)
-            branch_debugger.log_balances()
+            # log initial branch balances (should all be the same or in sync)
+            branch_debugger.log_balances('initial balance')
 
-            branch_objs[0].deposit(100)
-            branch_objs[0].deposit(100)
-            branch_objs[0].withdraw(300)
-            branch_debugger.log_balances()
+            # initialize customer processes and execute events
+            for p in self.customer_processes:
+                customer = Customer(p['id'], p['events'])
+                customer.create_stub()  # create stub and process events
+                time.sleep(0.1)
 
-            yield
-            last_server.wait_for_termination()
+            # allow any lingering transaction to be completed
+            logging.info("\n\nWaiting 1 sec before wrapping up...")
+            time.sleep(1)
 
-        except KeyboardInterrupt:
-            pass
+        except Exception as e:
+            logging.error(f"\n\n!!! Failed with error: {e}\n\n")
+
+        else:  # if no errors are raised
+            branch_debugger.log_balances('final balance')
 
         finally:
+            # stop/release branch servers
             for p in branch_server_procs:
                 p.stop(grace=None)
-
-    def run(self) -> None:
-        logging.info('\nStarting branch processes...')
-
-        with self.initialize_branch_processes():
-            pass # maybe this context manager is not needed
 
 
 if __name__ == '__main__':

@@ -100,12 +100,14 @@ class Branch(banking_pb2_grpc.BranchServicer):
 
 
 class BranchDebugger:
-    """Helper class that debugs branch processes"""
+    """Helper class for debugging branch processes"""
 
     def __init__(self, branches: list):
         self.branches = branches
 
     def log_balances(self, note: str) -> None:
-        logging.info(f"\nBranch balances ({note}):")
+        logging.info(f"\n\n\n\nBranch balances ({note}):")
         for b in self.branches:
             logging.info(f"\t- id: {b.id}, balance: {b.balance}")
+
+        logging.info("\n")
