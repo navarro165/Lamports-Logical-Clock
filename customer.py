@@ -38,7 +38,7 @@ class Customer:
                 interface=event['interface'],
                 money=event.get('money'),
                 type="customer",
-                originator_id=self.id
+                id=self.id
             )
             response = self.stub.MsgDelivery(request)
             time.sleep(0.1)
