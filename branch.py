@@ -1,9 +1,10 @@
 import time
-import grpc
 import logging
+from typing import Union, Literal, Any
+
+import grpc
 import banking_pb2
 import banking_pb2_grpc
-from typing import Union, Literal, Any
 
 
 logging.basicConfig(level=logging.INFO, format='%(message)s')
@@ -11,9 +12,9 @@ logging.basicConfig(level=logging.INFO, format='%(message)s')
 
 class Branch(banking_pb2_grpc.BranchServicer):
 
-    def __init__(self, id: int, balance: int, branches: list):
+    def __init__(self, _id: int, balance: int, branches: list):
         # unique ID of the Branch
-        self.id = id
+        self.id = _id
 
         # replica of the Branch's balance
         self.balance = balance
@@ -24,25 +25,34 @@ class Branch(banking_pb2_grpc.BranchServicer):
         # the list of Client stubs to communicate with the branches
         self.stubList = list()
 
-        # TODO: ask about this todo
-        # TODO: students are expected to store the processID of the branches
-
-    def MsgDelivery(self, request:Any, context: Any) -> Any:
+    def MsgDelivery(self, request: Any, context: Any) -> Any:
         """Processes the requests received from other processes and returns results to requested process."""
 
+        logging.info(f"\t> branch {self.id} received {request.interface} from "
+                     f"{request.type} {request.originator_id}"
+                     f"{' for the amount of: $ ' + str(request.money) if request.interface != 'query' else ''}")
+
         if request.type == "branch":
-            logging.info(f"\t> branch {self.id} received {request.interface} propagation from "
-                         f"branch {request.originator_id} for the amount of: ${request.money}")
+            if request.interface == "deposit":
+                self.balance += request.money
 
-            if request.interface in {"deposit", "withdraw"}:
-                if request.interface == "deposit":
-                    self.balance += request.money
+            elif request.interface == "withdraw":
+                self.balance -= request.money
 
-                elif request.interface == "withdraw":
-                    self.balance -= request.money
+            logging.info(f"\t> branch {self.id} balance is ${self.balance}")
+            return banking_pb2.BranchReply(balance=self.balance, originator_id=self.id)
 
-                logging.info(f"\t> branch {self.id} balance is now ${self.balance}")
-                return banking_pb2.BranchReply(balance=self.balance, originator_id=self.id)
+        if request.type == "customer":
+            if request.interface == "deposit":
+                self.deposit(request.money)
+
+            elif request.interface == "withdraw":
+                self.withdraw(request.money)
+
+            elif request.interface == "query":
+                logging.info(f"\t> branch {self.id} balance is ${self.balance}")
+
+        return banking_pb2.BranchReply(balance=self.balance, originator_id=self.id)
 
     @staticmethod
     def _link_to_branch(originator_id: int, receiver: int, interface: str, money: Union[int, float]) -> None:
@@ -58,14 +68,16 @@ class Branch(banking_pb2_grpc.BranchServicer):
             )
             response = stub.MsgDelivery(request)
             logging.info(f"\t< branch {originator_id} confirms that branch {receiver} "
-                         f"has new balance of {response.balance}\n")
+                         f"has new balance of {response.balance}")
 
     def _propagate_to_branches(self, amount: Union[int, float], propagate_type: Literal["deposit", "withdraw"]) -> None:
         """Helper that propagates deposits or withdrawals to other branches"""
-
-        logging.info(f"\nPropagating branch {self.id} {propagate_type} of ${amount} to branches {self.branches}...")
+        logging.info(f"\n\t******************************************************************")
+        logging.info(f"\t*** Propagating branch {self.id} {propagate_type} "
+                     f"of ${amount} to branches {self.branches} ***")
 
         for target_branch in self.branches:
+            logging.info('')
             self._link_to_branch(
                 originator_id=self.id,
                 receiver=target_branch,
@@ -73,6 +85,8 @@ class Branch(banking_pb2_grpc.BranchServicer):
                 money=amount,
             )
             time.sleep(0.1)
+
+        logging.info(f"\t******************************************************************")
 
     def deposit(self, amount: Union[int, float]) -> None:
         """Initiate branch deposit"""
@@ -91,7 +105,7 @@ class BranchDebugger:
     def __init__(self, branches: list):
         self.branches = branches
 
-    def log_balances(self) -> None:
-        logging.info("\nCurrent branch balances:")
+    def log_balances(self, note: str) -> None:
+        logging.info(f"\nBranch balances ({note}):")
         for b in self.branches:
             logging.info(f"\t- id: {b.id}, balance: {b.balance}")
