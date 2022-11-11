@@ -20,7 +20,7 @@ class Customer:
 
     def create_stub(self) -> None:
         """Helper to facilitate communication between customers and a branch process with matching ID"""
-        with grpc.insecure_channel(f'localhost:5005{self.id}') as channel:
+        with grpc.insecure_channel(f"localhost:5005{self.id}") as channel:
             self.stub = banking_pb2_grpc.BranchStub(channel)
             self.execute_events()
 
@@ -34,13 +34,15 @@ class Customer:
             logging.debug(f"\t###################")
 
             request = banking_pb2.BranchRequest(
-                interface=event['interface'],
-                money=event.get('money'),
+                interface=event["interface"],
+                money=event.get("money"),
                 type="customer",
-                id=self.id
+                id=self.id,
             )
             response = self.stub.MsgDelivery(request)
 
-            logging.debug(f"\t^ customer {self.id} confirms that branch {self.id} "
-                          f"has{' ' if event['interface'] == 'query' else ' new '}"
-                          f"balance of {response.balance}".upper())
+            logging.debug(
+                f"\t^ customer {self.id} confirms that branch {self.id} "
+                f"has{' ' if event['interface'] == 'query' else ' new '}"
+                f"balance of {response.balance}".upper()
+            )
