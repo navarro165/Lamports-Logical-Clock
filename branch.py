@@ -27,9 +27,11 @@ class Branch(banking_pb2_grpc.BranchServicer):
     def MsgDelivery(self, request: Any, context: Any) -> Any:
         """Processes the requests received from other processes and returns results to requested process."""
 
-        logging.debug(f"\t> branch {self.id} received {request.interface} from "
-                      f"{request.type} {request.id}"
-                      f"{' for the amount of: $ ' + str(request.money) if request.interface != 'query' else ''}")
+        logging.debug(
+            f"\t> branch {self.id} received {request.interface} from "
+            f"{request.type} {request.id}"
+            f"{' for the amount of: $ ' + str(request.money) if request.interface != 'query' else ''}"
+        )
 
         if request.type == "branch":
             if request.interface == "deposit":
@@ -61,29 +63,34 @@ class Branch(banking_pb2_grpc.BranchServicer):
         return banking_pb2.BranchReply(balance=self.balance, id=self.id)
 
     @staticmethod
-    def _link_to_branch(_id: int, receiver: int, interface: str, money: Union[int, float]) -> None:
+    def _link_to_branch(
+        _id: int, receiver: int, interface: str, money: Union[int, float]
+    ) -> None:
         """Helper that creates a gRPC channel to a specific branch"""
 
-        with grpc.insecure_channel(f'localhost:5005{receiver}') as channel:
+        with grpc.insecure_channel(f"localhost:5005{receiver}") as channel:
             stub = banking_pb2_grpc.BranchStub(channel)
             request = banking_pb2.BranchRequest(
-                interface=interface,
-                money=money,
-                type="branch",
-                id=_id
+                interface=interface, money=money, type="branch", id=_id
             )
             response = stub.MsgDelivery(request)
-            logging.debug(f"\t< branch {_id} confirms that branch {receiver} "
-                          f"has new balance of {response.balance}")
+            logging.debug(
+                f"\t< branch {_id} confirms that branch {receiver} "
+                f"has new balance of {response.balance}"
+            )
 
-    def _propagate_to_branches(self, amount: Union[int, float], propagate_type: Literal["deposit", "withdraw"]) -> None:
+    def _propagate_to_branches(
+        self, amount: Union[int, float], propagate_type: Literal["deposit", "withdraw"]
+    ) -> None:
         """Helper that propagates deposits or withdrawals to other branches"""
         logging.debug(f"\n\t******************************************************************")
-        logging.debug(f"\t*** Propagating branch {self.id} {propagate_type} "
-                      f"of ${amount} to branches {self.branches} ***")
+        logging.debug(
+            f"\t*** Propagating branch {self.id} {propagate_type} "
+            f"of ${amount} to branches {self.branches} ***"
+        )
 
         for target_branch in self.branches:
-            logging.debug('')
+            logging.debug("")
             self._link_to_branch(
                 _id=self.id,
                 receiver=target_branch,
@@ -98,7 +105,7 @@ class Branch(banking_pb2_grpc.BranchServicer):
         self.balance += amount
         self._propagate_to_branches(amount=amount, propagate_type="deposit")
 
-    def withdraw(self,  amount: Union[int, float]) -> None:
+    def withdraw(self, amount: Union[int, float]) -> None:
         """Initiate branch withdraw"""
         self.balance -= amount
         self._propagate_to_branches(amount=amount, propagate_type="withdraw")
