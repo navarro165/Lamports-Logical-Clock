@@ -16,6 +16,8 @@ message BranchRequest {
   string interface = 3;
   float money = 4;
   int32 id = 5;
+  int32 clock = 6;
+  int32 event_id = 7;
 }
 
 // Branch response message
@@ -25,4 +27,7 @@ message BranchReply {
   string interface = 3;
   float money = 4;
   int32 id = 5;
+  int32 clock = 6;
+  int32 event_id = 7;
+  string request_status = 8;
 }
