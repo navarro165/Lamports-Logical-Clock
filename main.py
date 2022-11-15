@@ -4,7 +4,6 @@ import grpc
 import logging
 import threading
 import banking_pb2_grpc
-from pprint import pprint
 from concurrent import futures
 
 from customer import Customer
@@ -15,7 +14,6 @@ from test_input_output import input_test
 class Main:
     def __init__(self, input_data: list) -> None:
         logging.info("Collecting input data...")
-
         self.input_data = input_data
 
         # collect branch and customer data from input
@@ -23,7 +21,8 @@ class Main:
         self.customer_processes = []
         self.parse_processes()
 
-        self.list_processes()  # for debugging purposes
+        # for debugging purposes
+        self.list_processes()
 
     def parse_processes(self) -> None:
         """Extract branch and customer event information from the input data"""
@@ -43,7 +42,7 @@ class Main:
         for p in self.customer_processes:
             logging.info(f"\t{p}")
 
-    def execute_customer_events(self):
+    def execute_customer_events(self) -> None:
         """Execute customer events in parallel"""
 
         threads = []
@@ -92,12 +91,13 @@ class Main:
             # log initial branch balances (should all be the same or in sync)
             branch_debugger.log_balances("initial balance")
 
-            logging.info("\n\n\n... STARTING CUSTOMER EVENTS ...")
             # initialize customer processes and execute events
+            logging.info("\n... STARTING CUSTOMER EVENTS ...")
             self.execute_customer_events()
+            logging.info("\n... FINISHED CUSTOMER EVENTS ...")
 
             # allow any lingering transaction to be completed
-            logging.debug("\n\nWaiting 3 sec before wrapping up...")
+            logging.debug("\nWaiting 3 sec before wrapping up...")
             time.sleep(3)
 
         except Exception as e:
@@ -108,15 +108,8 @@ class Main:
             # log final balances and output detailed customer events
             branch_debugger.log_balances("final balance")
 
-            logging.info("\n\n########################")
-            logging.info("\tOUTPUT:")
-            logging.info("########################\n")
-            pprint(branch_debugger.list_branch_transactions())
-            logging.info("\n")
-
-            # TODO fix
-            branch_debugger.log_events()
-            branch_debugger.log_events2()
+            # log branch events (organized by both branch and event ids)
+            branch_debugger.output_logger()
 
         finally:
             # stop/release branch servers
@@ -125,15 +118,6 @@ class Main:
 
 
 if __name__ == "__main__":
-
-    # when debug flag is set (by passing "--debug") a detailed view of all customer and branch events is shown
-    # otherwise we default to INFO level logs
-    has_debug_flag = False
-    if len(sys.argv) == 2 and sys.argv[1] == "--debug":
-        logging.basicConfig(level=logging.DEBUG, format="%(message)s")
-        has_debug_flag = True
-    else:
-        logging.basicConfig(level=logging.INFO, format="%(message)s")
-
+    logging.basicConfig(level=logging.DEBUG, format="%(message)s")
     main = Main(input_data=input_test)
     main.run()
