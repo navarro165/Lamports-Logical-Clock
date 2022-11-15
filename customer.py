@@ -1,4 +1,3 @@
-import logging
 import grpc
 import banking_pb2
 import banking_pb2_grpc
@@ -18,6 +17,9 @@ class Customer:
         # pointer for the stub
         self.stub = None
 
+        # keep track of the local clock
+        self.local_clock = 0
+
     def create_stub(self) -> None:
         """Helper to facilitate communication between customers and a branch process with matching ID"""
         with grpc.insecure_channel(f"localhost:5005{self.id}") as channel:
@@ -26,23 +28,17 @@ class Customer:
 
     def execute_events(self) -> None:
         """Processes the events from the list of events and submits the request to the Branch process"""
-        logging.debug(f"\n\nExecuting customer {self.id} events...")
-
         for event in self.events:
-            logging.debug(f"\n\n\t###################")
-            logging.debug(f"\t##### {event['interface'].upper()} #####")
-            logging.debug(f"\t###################")
-
             request = banking_pb2.BranchRequest(
                 interface=event["interface"],
                 money=event.get("money"),
                 type="customer",
                 id=self.id,
+                event_id=event.get("id"),
+                clock=self.local_clock,
             )
             response = self.stub.MsgDelivery(request)
+            self.update_local_clock(response.clock)
 
-            logging.debug(
-                f"\t^ customer {self.id} confirms that branch {self.id} "
-                f"has{' ' if event['interface'] == 'query' else ' new '}"
-                f"balance of {response.balance}".upper()
-            )
+    def update_local_clock(self, *args: int) -> None:
+        self.local_clock = max(self.local_clock, *args) + 1

@@ -54,9 +54,7 @@ class Main:
         # start threads
         for t in threads:
             t.start()
-            if has_debug_flag:
-                # this simplifies the reading of the logs (when enabled)
-                time.sleep(0.2)
+            time.sleep(0.2)
 
         # wait until the threads complete execution
         for t in threads:
@@ -115,6 +113,10 @@ class Main:
             logging.info("########################\n")
             pprint(branch_debugger.list_branch_transactions())
             logging.info("\n")
+
+            # TODO fix
+            branch_debugger.log_events()
+            branch_debugger.log_events2()
 
         finally:
             # stop/release branch servers
